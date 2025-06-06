@@ -35,11 +35,11 @@ def crear_secuencias_multistep(data, input_steps=30, output_steps=30):
 X, y = crear_secuencias_multistep(data_scaled)
 X = X.reshape((X.shape[0], X.shape[1], 1))
 
-# --- Crear modelo compatible ---
+# --- Crear modelo compatible con TF 2.13 ---
 model = Sequential([
-    Input(shape=(X.shape[1], 1)),
+    Input(shape=(X.shape[1], 1)),  # evitar batch_shape por compatibilidad
     LSTM(64, activation='relu'),
-    Dense(30)
+    Dense(y.shape[1])
 ])
 
 model.compile(optimizer='adam', loss='mse')
@@ -48,8 +48,7 @@ model.compile(optimizer='adam', loss='mse')
 early_stop = EarlyStopping(patience=10, restore_best_weights=True)
 model.fit(X, y, epochs=100, batch_size=16, validation_split=0.2, callbacks=[early_stop])
 
-# --- Guardar modelo ---
-model.save("modelo_diario_30dias.keras")
+# --- Guardar modelo en formato h5 compatible ---
+model.save("modelo_diario_30dias.h5")
 
-# Nota: el scaler no se guarda en pickle para evitar errores en la nube.
-print("✅ Modelo guardado como modelo_diario_30dias.keras (sin usar scaler externo)")
+print("✅ Modelo guardado como modelo_diario_30dias.h5 compatible con Streamlit Cloud")

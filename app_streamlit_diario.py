@@ -27,14 +27,14 @@ df_diario = cargar_datos()
 st.subheader("📊 Consumo Diario Histórico")
 st.line_chart(df_diario)
 
-# --- Escalar y preparar secuencia de entrada ---
+# --- Escalar datos y preparar entrada ---
 scaler = MinMaxScaler()
 data_scaled = scaler.fit_transform(df_diario.values.reshape(-1, 1))
 input_data = data_scaled[-30:].reshape((1, 30, 1))
 
 # --- Cargar modelo y predecir ---
 try:
-    model = load_model("modelo_diario_30dias.h5")
+    model = load_model("modelo_diario_30dias.keras")
     pred_scaled = model.predict(input_data)
     pred = scaler.inverse_transform(pred_scaled.reshape(-1, 1))
 
@@ -44,8 +44,8 @@ try:
     df_pred = pd.DataFrame(pred, index=fechas_futuras, columns=["Consumo (kWh)"])
     st.line_chart(df_pred)
 
-    # --- Tabla de predicción ---
     with st.expander("🔍 Ver tabla de predicción"):
         st.dataframe(df_pred.style.format("{:.2f}"))
+
 except Exception as e:
     st.error(f"Error al cargar el modelo o hacer predicciones: {e}")

@@ -38,7 +38,7 @@ st.subheader("📊 Consumo Diario Histórico")
 st.line_chart(df_daily)
 
 # --- Escalar y preparar datos ---
-scaler = joblib.load("scaler_diario.save")
+scaler = joblib.load("scaler_diario.pkl")
 scaled_data = scaler.transform(df_daily.values.reshape(-1, 1))
 
 # --- Crear última secuencia de entrada ---

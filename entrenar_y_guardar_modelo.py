@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Input
+from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.callbacks import EarlyStopping
 
-# --- Cargar datos y preprocesar ---
+# --- Cargar y preprocesar datos ---
 def cargar_datos():
     with zipfile.ZipFile("household_power_consumption.zip") as z:
         with z.open("household_power_consumption.txt") as file:
@@ -20,7 +20,7 @@ def cargar_datos():
 
 df_diario = cargar_datos()
 
-# --- Escalar datos ---
+# --- Escalar ---
 scaler = MinMaxScaler()
 data_scaled = scaler.fit_transform(df_diario.values.reshape(-1, 1))
 
@@ -35,20 +35,17 @@ def crear_secuencias_multistep(data, input_steps=30, output_steps=30):
 X, y = crear_secuencias_multistep(data_scaled)
 X = X.reshape((X.shape[0], X.shape[1], 1))
 
-# --- Crear modelo compatible con TF 2.13 ---
-model = Sequential([
-    Input(shape=(X.shape[1], 1)),  # evitar batch_shape por compatibilidad
-    LSTM(64, activation='relu'),
-    Dense(y.shape[1])
-])
+# --- Crear modelo compatible con .h5 ---
+model = Sequential()
+model.add(LSTM(64, activation='relu', input_shape=(X.shape[1], 1)))
+model.add(Dense(30))
 
 model.compile(optimizer='adam', loss='mse')
 
 # --- Entrenar modelo ---
-early_stop = EarlyStopping(patience=10, restore_best_weights=True)
-model.fit(X, y, epochs=100, batch_size=16, validation_split=0.2, callbacks=[early_stop])
+stop = EarlyStopping(patience=10, restore_best_weights=True)
+model.fit(X, y, epochs=100, batch_size=16, validation_split=0.2, callbacks=[stop])
 
-# --- Guardar modelo en formato h5 compatible ---
+# --- Guardar modelo ---
 model.save("modelo_diario_30dias.h5")
-
-print("✅ Modelo guardado como modelo_diario_30dias.h5 compatible con Streamlit Cloud")
+print("✅ Modelo guardado como modelo_diario_30dias.h5")

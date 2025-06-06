@@ -33,16 +33,19 @@ data_scaled = scaler.fit_transform(df_diario.values.reshape(-1, 1))
 input_data = data_scaled[-30:].reshape((1, 30, 1))
 
 # --- Cargar modelo y predecir ---
-model = load_model("modelo_diario_30dias.keras")
-pred_scaled = model.predict(input_data)
-pred = scaler.inverse_transform(pred_scaled.reshape(-1, 1))
+try:
+    model = load_model("modelo_diario_30dias.keras")
+    pred_scaled = model.predict(input_data)
+    pred = scaler.inverse_transform(pred_scaled.reshape(-1, 1))
 
-# --- Mostrar predicción ---
-st.subheader("🔮 Predicción de los Próximos 30 Días")
-fechas_futuras = pd.date_range(start=df_diario.index[-1] + pd.Timedelta(days=1), periods=30)
-df_pred = pd.DataFrame(pred, index=fechas_futuras, columns=["Consumo (kWh)"])
-st.line_chart(df_pred)
+    # --- Mostrar predicción ---
+    st.subheader("🔮 Predicción de los Próximos 30 Días")
+    fechas_futuras = pd.date_range(start=df_diario.index[-1] + pd.Timedelta(days=1), periods=30)
+    df_pred = pd.DataFrame(pred, index=fechas_futuras, columns=["Consumo (kWh)"])
+    st.line_chart(df_pred)
 
-# --- Tabla de predicción ---
-with st.expander("🔍 Ver tabla de predicción"):
-    st.dataframe(df_pred.style.format("{:.2f}"))
+    # --- Tabla de predicción ---
+    with st.expander("🔍 Ver tabla de predicción"):
+        st.dataframe(df_pred.style.format("{:.2f}"))
+except Exception as e:
+    st.error(f"Error al cargar el modelo o hacer predicciones: {e}")

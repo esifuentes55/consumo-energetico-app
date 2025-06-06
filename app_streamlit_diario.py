@@ -26,11 +26,15 @@ if not os.path.exists("modelo_diario_30dias.h5"):
 # --- Cargar datos y procesar ---
 @st.cache_data
 def cargar_datos():
-    url = "https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
+    url = "https://drive.google.com/uc?export=download&id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
     response = requests.get(url)
-    z = zipfile.ZipFile(io.BytesIO(response.content))
 
-    # Asegúrate que este nombre coincida exactamente con el que está dentro del zip
+    try:
+        z = zipfile.ZipFile(io.BytesIO(response.content))
+    except zipfile.BadZipFile:
+        st.error("⚠️ El archivo descargado no es un ZIP válido. Verifica el enlace de Google Drive.")
+        st.stop()
+
     with z.open("household_power_consumption.txt") as file:
         df = pd.read_csv(file, sep=';', na_values='?', low_memory=False)
 
@@ -41,7 +45,6 @@ def cargar_datos():
     df_daily = df['Global_active_power'].resample('D').mean()
     df_daily.dropna(inplace=True)
     return df_daily
-
 df_daily = cargar_datos()
 
 # Visualización de historial

@@ -29,19 +29,19 @@ if not os.path.exists("modelo_diario_30dias.h5"):
 # --- Cargar datos y procesar ---
 @st.cache_data
 def cargar_datos():
-    url = "https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
-    output = "dataset.zip"
-    gdown.download(url, output, quiet=False)
-
-    with zipfile.ZipFile(output, 'r') as z:
-        with z.open("household_power_consumption.txt") as file:
-            df = pd.read_csv(file, sep=';', na_values='?', low_memory=False)
-
+    url = "https://drive.google.com/uc?export=download&id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
+    response = requests.get(url)
+    df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), sep=';', low_memory=False)
+    
     df.columns = df.columns.str.strip()
+    df = df[df['Global_active_power'] != '?']
+    df['Global_active_power'] = pd.to_numeric(df['Global_active_power'])
+
     df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d/%m/%Y %H:%M:%S')
     df.set_index('DateTime', inplace=True)
-    df['Global_active_power'] = pd.to_numeric(df['Global_active_power'], errors='coerce')
+
     df_daily = df['Global_active_power'].resample('D').mean()
+    df_daily = df_daily.to_frame(name='Consumo (kW)')
     df_daily.dropna(inplace=True)
     return df_daily
 df_daily = cargar_datos()

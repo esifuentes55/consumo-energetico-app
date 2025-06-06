@@ -13,9 +13,9 @@ st.set_page_config(page_title="⚡ Predicción de Consumo Diario", layout="wide"
 st.title("⚡ Predicción de Consumo Energético Diario (30 días)")
 
 # Verificación de archivos requeridos
-if not os.path.exists("household_power_consumption.txt"):
-    st.error("❌ No se encontró el archivo 'household_power_consumption.txt'.")
-    st.stop()
+# if not os.path.exists("household_power_consumption.txt"):
+#     st.error("❌ No se encontró el archivo 'household_power_consumption.txt'.")
+#     st.stop()
 
 if not os.path.exists("modelo_diario_30dias.h5"):
     st.error("❌ No se encontró el modelo entrenado 'modelo_diario_30dias.h5'.")
@@ -24,7 +24,7 @@ if not os.path.exists("modelo_diario_30dias.h5"):
 # --- Cargar datos y procesar ---
 @st.cache_data
 def cargar_datos():
-    df = pd.read_csv("household_power_consumption.txt", sep=';', na_values='?', low_memory=False)
+    df = pd.read_csv("https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo", sep=';', na_values='?', low_memory=False)
     df.columns = df.columns.str.strip()
     df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d/%m/%Y %H:%M:%S')
     df.set_index('DateTime', inplace=True)

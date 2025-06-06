@@ -24,7 +24,14 @@ if not os.path.exists("modelo_diario_30dias.h5"):
 # --- Cargar datos y procesar ---
 @st.cache_data
 def cargar_datos():
-    df = pd.read_csv("https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo", sep=';', na_values='?', low_memory=False)
+    url = "https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
+    response = requests.get(url)
+    z = zipfile.ZipFile(io.BytesIO(response.content))
+    
+    # Reemplaza este nombre con el real si no es exactamente este
+    with z.open("household_power_consumption.txt") as file:
+        df = pd.read_csv(file, sep=';', na_values='?', low_memory=False)
+
     df.columns = df.columns.str.strip()
     df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d/%m/%Y %H:%M:%S')
     df.set_index('DateTime', inplace=True)

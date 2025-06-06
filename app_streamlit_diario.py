@@ -34,7 +34,7 @@ input_data = data_scaled[-30:].reshape((1, 30, 1))
 
 # --- Cargar modelo y predecir ---
 try:
-    model = load_model("modelo_diario_30dias.keras")
+    model = load_model("modelo_diario_30dias.h5")
     pred_scaled = model.predict(input_data)
     pred = scaler.inverse_transform(pred_scaled.reshape(-1, 1))
 

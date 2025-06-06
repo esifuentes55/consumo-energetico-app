@@ -1,95 +1,72 @@
-# app_streamlit_diario.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
-import os
-import requests
+import zipfile
 import io
-import zipfile
-import gdown
-import zipfile
-import streamlit as st
-# Configuración inicial
-st.set_page_config(page_title="⚡ Predicción de Consumo Diario", layout="wide")
+
+st.set_page_config(page_title="Predicción de Consumo Diario", layout="wide")
 st.title("⚡ Predicción de Consumo Energético Diario (30 días)")
 
-# Verificación de archivos requeridos
-# if not os.path.exists("household_power_consumption.txt"):
-#     st.error("❌ No se encontró el archivo 'household_power_consumption.txt'.")
-#     st.stop()
-
-if not os.path.exists("modelo_diario_30dias.h5"):
-    st.error("❌ No se encontró el modelo entrenado 'modelo_diario_30dias.h5'.")
-    st.stop()
-
-# --- Cargar datos y procesar ---
+# --- Función para cargar y procesar datos desde un ZIP ---
 @st.cache_data
-def cargar_datos():
-    url = "https://drive.google.com/uc?export=download&id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
-    response = requests.get(url)
-    
-    # Verifica si se descargó contenido correcto
-    content = response.content.decode("utf-8")
-    if not content.startswith("Date;Time;Global_active_power"):
-        st.error("❌ El archivo descargado no es válido. Verifica el enlace de Google Drive.")
-        return pd.DataFrame()
+def cargar_datos(zip_file, txt_name="household_power_consumption.txt", nrows=None):
+    try:
+        with zipfile.ZipFile(zip_file) as z:
+            with z.open(txt_name) as file:
+                df = pd.read_csv(file, sep=';', low_memory=False, nrows=nrows)
+                df = df[df['Global_active_power'] != '?']
+                df['Global_active_power'] = pd.to_numeric(df['Global_active_power'])
+                df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format="%d/%m/%Y %H:%M:%S")
+                df.set_index('DateTime', inplace=True)
+                df_diario = df['Global_active_power'].resample('D').mean()
+                return df_diario.dropna()
+    except Exception as e:
+        st.error(f"Error al procesar los datos: {e}")
+        return None
 
-    df = pd.read_csv(io.StringIO(content), sep=";", low_memory=False)
-    df.columns = df.columns.str.strip()
+# --- Subida del archivo ZIP ---
+zip_file = st.file_uploader("📁 Sube el archivo ZIP con el dataset", type="zip")
 
-    st.write("📋 Columnas cargadas:", df.columns.tolist())
+if zip_file is not None:
+    df_daily = cargar_datos(zip_file)
 
-    # Validación de columnas necesarias
-    if 'Global_active_power' not in df.columns or 'Date' not in df.columns or 'Time' not in df.columns:
-        st.error("❌ Las columnas esperadas no están presentes en el archivo.")
-        return pd.DataFrame()
+    if df_daily is not None:
+        # --- Mostrar datos históricos ---
+        st.subheader("📈 Consumo Diario Histórico")
+        st.line_chart(df_daily)
 
-    df = df[df['Global_active_power'] != '?']
-    df['Global_active_power'] = pd.to_numeric(df['Global_active_power'])
+        # --- Escalado y preparación ---
+        scaler = MinMaxScaler()
+        scaled_data = scaler.fit_transform(df_daily.values.reshape(-1, 1))
 
-    df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format="%d/%m/%Y %H:%M:%S")
-    df.set_index('DateTime', inplace=True)
+        def crear_secuencias(data, input_steps=30):
+            X = []
+            for i in range(len(data) - input_steps):
+                X.append(data[i:i+input_steps])
+            return np.array(X)
 
-    df_daily = df['Global_active_power'].resample('D').mean()
-    df_daily = df_daily.to_frame(name='Consumo (kW)')
-    df_daily.dropna(inplace=True)
+        X = crear_secuencias(scaled_data)
+        X_pred = X[-1].reshape((1, 30, 1))
 
-    return df_daily
-df_daily = cargar_datos()
+        # --- Cargar modelo ---
+        try:
+            model = load_model("modelo_diario_30dias.h5")
+            pred = model.predict(X_pred)
+            pred_inv = scaler.inverse_transform(pred.reshape(-1, 1))
 
-# Visualización de historial
-st.subheader("📊 Consumo Diario Histórico")
-st.line_chart(df_daily)
+            # --- Mostrar predicción ---
+            st.subheader("🔮 Predicción de Consumo para los Próximos 30 Días")
+            dias_futuros = pd.date_range(start=df_daily.index[-1] + pd.Timedelta(days=1), periods=30)
+            df_pred = pd.DataFrame(pred_inv, index=dias_futuros, columns=["Consumo (kWh)"])
+            st.line_chart(df_pred)
 
-# Escalado de datos
-scaler = MinMaxScaler()
-scaled_data = scaler.fit_transform(df_daily.values.reshape(-1, 1))
+            with st.expander("🔍 Ver tabla de predicción"):
+                st.dataframe(df_pred.style.format("{:.2f}"))
 
-# Preparación de entrada para predicción
-def crear_secuencia_final(data, steps=30):
-    return np.array(data[-steps:]).reshape(1, steps, 1)
-
-X_pred = crear_secuencia_final(scaled_data)
-
-# Cargar modelo
-model = load_model("modelo_diario_30dias.h5")
-
-# Realizar predicción
-pred = model.predict(X_pred)
-pred_inv = scaler.inverse_transform(pred.reshape(-1, 1))
-
-# Mostrar resultado
-dias_futuros = pd.date_range(start=df_daily.index[-1] + pd.Timedelta(days=1), periods=30)
-df_pred = pd.DataFrame(pred_inv, index=dias_futuros, columns=["Consumo (kWh)"])
-
-st.subheader("🔮 Predicción de Consumo para los Próximos 30 Días")
-st.line_chart(df_pred)
-
-with st.expander("📋 Ver tabla de predicción"):
-    st.dataframe(df_pred.style.format("{:.2f}"))
-
-st.success("✅ Predicción generada exitosamente.")
+        except Exception as e:
+            st.error(f"Error al cargar el modelo o predecir: {e}")
+else:
+    st.info("Por favor sube el archivo ZIP con el dataset.")

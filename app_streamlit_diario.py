@@ -27,7 +27,7 @@ df_diario = cargar_datos()
 st.subheader("📊 Consumo Diario Histórico")
 st.line_chart(df_diario)
 
-# --- Escalar datos y preparar entrada ---
+# --- Escalar y preparar secuencia de entrada ---
 scaler = MinMaxScaler()
 data_scaled = scaler.fit_transform(df_diario.values.reshape(-1, 1))
 input_data = data_scaled[-30:].reshape((1, 30, 1))
@@ -44,6 +44,7 @@ try:
     df_pred = pd.DataFrame(pred, index=fechas_futuras, columns=["Consumo (kWh)"])
     st.line_chart(df_pred)
 
+    # --- Tabla de predicción ---
     with st.expander("🔍 Ver tabla de predicción"):
         st.dataframe(df_pred.style.format("{:.2f}"))
 

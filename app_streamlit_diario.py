@@ -10,6 +10,9 @@ import os
 import requests
 import io
 import zipfile
+import gdown
+import zipfile
+import streamlit as st
 # Configuración inicial
 st.set_page_config(page_title="⚡ Predicción de Consumo Diario", layout="wide")
 st.title("⚡ Predicción de Consumo Energético Diario (30 días)")
@@ -26,17 +29,13 @@ if not os.path.exists("modelo_diario_30dias.h5"):
 # --- Cargar datos y procesar ---
 @st.cache_data
 def cargar_datos():
-    url = "https://drive.google.com/uc?export=download&id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
-    response = requests.get(url)
+    url = "https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
+    output = "dataset.zip"
+    gdown.download(url, output, quiet=False)
 
-    try:
-        z = zipfile.ZipFile(io.BytesIO(response.content))
-    except zipfile.BadZipFile:
-        st.error("⚠️ El archivo descargado no es un ZIP válido. Verifica el enlace de Google Drive.")
-        st.stop()
-
-    with z.open("household_power_consumption.txt") as file:
-        df = pd.read_csv(file, sep=';', na_values='?', low_memory=False)
+    with zipfile.ZipFile(output, 'r') as z:
+        with z.open("household_power_consumption.txt") as file:
+            df = pd.read_csv(file, sep=';', na_values='?', low_memory=False)
 
     df.columns = df.columns.str.strip()
     df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d/%m/%Y %H:%M:%S')

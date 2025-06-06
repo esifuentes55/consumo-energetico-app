@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import os
-
+import requests
+import io
+import zipfile
 # Configuración inicial
 st.set_page_config(page_title="⚡ Predicción de Consumo Diario", layout="wide")
 st.title("⚡ Predicción de Consumo Energético Diario (30 días)")
@@ -27,8 +29,8 @@ def cargar_datos():
     url = "https://drive.google.com/uc?id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
     response = requests.get(url)
     z = zipfile.ZipFile(io.BytesIO(response.content))
-    
-    # Reemplaza este nombre con el real si no es exactamente este
+
+    # Asegúrate que este nombre coincida exactamente con el que está dentro del zip
     with z.open("household_power_consumption.txt") as file:
         df = pd.read_csv(file, sep=';', na_values='?', low_memory=False)
 

@@ -6,12 +6,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
-import joblib
 import zipfile
 import os
 
 st.set_page_config(page_title="Predicción de Consumo Diario", layout="wide")
-st.title(" 🔋 Predicción de Consumo Energético Diario (30 días)")
+
+st.title("🔋 Predicción de Consumo Energético Diario (30 días)")
 
 # --- Cargar y descomprimir ZIP si es necesario ---
 if not os.path.exists("household_power_consumption.txt"):
@@ -34,35 +34,29 @@ def cargar_datos():
 df_daily = cargar_datos()
 
 # --- Mostrar datos históricos ---
-st.subheader("📉 Consumo Diario Histórico")
+st.subheader("📊 Consumo Diario Histórico")
 st.line_chart(df_daily)
 
 # --- Escalar y preparar datos ---
-scaler = joblib.load("scaler_diario.save")
-scaled_data = scaler.transform(df_daily.values.reshape(-1, 1))
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(df_daily.values.reshape(-1, 1))
 
-def crear_secuencias(data, input_steps=30):
-    X = []
-    for i in range(len(data) - input_steps):
-        X.append(data[i:i+input_steps])
-    return np.array(X)
-
-X = crear_secuencias(scaled_data)
-X_pred = X[-1].reshape((1, 30, 1))
+# Tomamos la última secuencia de 30 días para predecir los siguientes 30
+X_input = scaled_data[-30:].reshape(1, 30, 1)
 
 # --- Cargar modelo ---
 model = load_model("modelo_diario_30dias.keras")
 
 # --- Predecir ---
-pred = model.predict(X_pred)
+pred = model.predict(X_input)
 pred_inv = scaler.inverse_transform(pred.reshape(-1, 1))
 
 # --- Mostrar predicción ---
-st.subheader("🔢 Predicción de Consumo para los Próximos 30 Días")
+st.subheader("📈 Predicción de Consumo para los Próximos 30 Días")
 dias_futuros = pd.date_range(start=df_daily.index[-1] + pd.Timedelta(days=1), periods=30)
 df_pred = pd.DataFrame(pred_inv, index=dias_futuros, columns=["Consumo (kWh)"])
 st.line_chart(df_pred)
 
 # --- Mostrar tabla ---
-with st.expander("📊 Ver tabla de predicción"):
+with st.expander("📋 Ver tabla de predicción"):
     st.dataframe(df_pred.style.format("{:.2f}"))

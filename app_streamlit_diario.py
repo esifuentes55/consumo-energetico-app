@@ -31,18 +31,33 @@ if not os.path.exists("modelo_diario_30dias.h5"):
 def cargar_datos():
     url = "https://drive.google.com/uc?export=download&id=1HJkvX1rk9dqBuYzfjeBY_xNdQAMdlSHo"
     response = requests.get(url)
-    df = pd.read_csv(io.StringIO(response.content.decode("utf-8")), sep=';', low_memory=False)
     
+    # Verifica si se descargó contenido correcto
+    content = response.content.decode("utf-8")
+    if not content.startswith("Date;Time;Global_active_power"):
+        st.error("❌ El archivo descargado no es válido. Verifica el enlace de Google Drive.")
+        return pd.DataFrame()
+
+    df = pd.read_csv(io.StringIO(content), sep=";", low_memory=False)
     df.columns = df.columns.str.strip()
+
+    st.write("📋 Columnas cargadas:", df.columns.tolist())
+
+    # Validación de columnas necesarias
+    if 'Global_active_power' not in df.columns or 'Date' not in df.columns or 'Time' not in df.columns:
+        st.error("❌ Las columnas esperadas no están presentes en el archivo.")
+        return pd.DataFrame()
+
     df = df[df['Global_active_power'] != '?']
     df['Global_active_power'] = pd.to_numeric(df['Global_active_power'])
 
-    df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format='%d/%m/%Y %H:%M:%S')
+    df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'], format="%d/%m/%Y %H:%M:%S")
     df.set_index('DateTime', inplace=True)
 
     df_daily = df['Global_active_power'].resample('D').mean()
     df_daily = df_daily.to_frame(name='Consumo (kW)')
     df_daily.dropna(inplace=True)
+
     return df_daily
 df_daily = cargar_datos()
 
